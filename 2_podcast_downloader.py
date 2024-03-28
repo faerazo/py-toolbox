@@ -1,3 +1,9 @@
+''' Works with:
+    - https://podcast.emerj.com/rss
+    - https://feeds.megaphone.fm/MLN2155636147
+    - https://changelog.com/practicalai/feed
+'''
+
 import requests
 from xml.etree import ElementTree
 import os
