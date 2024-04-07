@@ -2,7 +2,9 @@ from pytube import YouTube
 from moviepy.editor import *
 import os
 
-def download_video_as_mp3(url, save_path='downloads/'):
+save_path = 'Downloads/' # Path to save the downloaded MP3 files
+
+def download_video_as_mp3(url):
     """
     Download a YouTube video and save it as an MP3 file, removing spaces from the file name.
     """
@@ -50,7 +52,8 @@ def download_multiple_videos_as_mp3(urls_string, delimiter=';'):
             downloaded_files.append(filename)
 
     # Generate text file with MP3 filenames
-    with open('downloaded_mp3_files.txt', 'w') as f:
+    text_file = os.path.join(save_path, 'downloaded_mp3_files.txt')
+    with open(text_file, 'w') as f:
         f.write("mp3_files = [\n")
         # Handle the comma placement for the last item
         for i, filename in enumerate(downloaded_files):
