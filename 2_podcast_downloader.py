@@ -4,57 +4,59 @@
     - https://changelog.com/practicalai/feed
 '''
 
+import logging
+from pathlib import Path
 import requests
 from xml.etree import ElementTree
-import os
 
-download_dir = os.path.expanduser("~/Downloads")
+def setup_logging():
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-if not os.path.exists(download_dir):
-    os.makedirs(download_dir)
+def ensure_directory_exists(path):
+    Path(path).mkdir(parents=True, exist_ok=True)
 
-# Download an episode and return the filename
-def download_episode(episode_url, episode_title):
-    safe_title = episode_title.replace(' ', '_').replace(':', '')
-    filename = "".join([c for c in safe_title if c.isalpha() or c.isdigit() or c in ['_', '.']]).rstrip() + '.mp3'
-    full_path = os.path.join(download_dir, filename)
+def fetch_rss_feed(url):
+    response = requests.get(url)
+    return ElementTree.fromstring(response.content)
+
+def download_episode(episode_url, episode_title, download_dir):
+    safe_title = ''.join(c for c in episode_title.replace(' ', '_').replace(':', '') if c.isalnum() or c in ['_', '.']) + '.mp3'
+    full_path = download_dir / safe_title
     response = requests.get(episode_url)
     with open(full_path, 'wb') as file:
         file.write(response.content)
-    print(f"Downloaded: {filename}")
-    return filename
+    logging.info(f"Downloaded: {safe_title}")
+    return safe_title
 
-# Generate a txt file with all downloaded MP3 filenames
-def generate_downloads_list(filenames):
-    with open(os.path.join(download_dir, 'downloaded_podcasts.txt'), 'w') as file:
+def generate_downloads_list(filenames, download_dir):
+    output_file = download_dir / 'downloaded_podcasts.txt'
+    with open(output_file, 'w') as file:
         file.write('mp3_files = [\n')
-        for filename in filenames:
-            file.write(f"             '{filename}',\n")
+        file.writelines(f"             '{filename}',\n" for filename in filenames)
         file.write(']\n')
+    logging.info("Download list generated.")
 
-# Main script
 def main():
+    download_dir = Path.home() / 'Downloads'
+    ensure_directory_exists(download_dir)
+
     rss_feed_url = input("Please enter the RSS feed URL: ")
-    response = requests.get(rss_feed_url)
-    rss_root = ElementTree.fromstring(response.content)
+    rss_root = fetch_rss_feed(rss_feed_url)
 
     episodes = rss_root.findall('./channel/item')
-    print("Available episodes:")
+    logging.info("Available episodes:")
     for i, episode in enumerate(episodes[::-1], start=1):
         title = episode.find('title').text
-        print(f"Episode {i}: {title}")
+        logging.info(f"Episode {i}: {title}")
 
-    selected_titles_input = input("\nEnter the titles of the episodes you want to download, separated by commas:\n")
-    selected_titles = [title.strip() for title in selected_titles_input.split(',')]
-    
-    downloaded_filenames = []
-    for episode in episodes:
-        title = episode.find('title').text
-        if title in selected_titles:
-            mp3_url = episode.find('enclosure').attrib['url']
-            downloaded_filenames.append(download_episode(mp3_url, title))
-    
-    generate_downloads_list(downloaded_filenames)
+    selected_episode_numbers = input("\nEnter the the episode numbers you want to download, separated by a semicolon(;):\n")
+    selected_numbers = [int(num.strip()) for num in selected_episode_numbers.split(';')]
+
+    filtered_episodes = [episodes[len(episodes) - num] for num in selected_numbers if len(episodes) - num in range(len(episodes))]
+    downloaded_filenames = [download_episode(ep.find('enclosure').attrib['url'], ep.find('title').text, download_dir) for ep in filtered_episodes]
+
+    generate_downloads_list(downloaded_filenames, download_dir)
 
 if __name__ == "__main__":
+    setup_logging()
     main()

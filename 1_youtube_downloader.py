@@ -1,70 +1,54 @@
-from pytube import YouTube
-from moviepy.editor import *
 import os
+import logging
+from pytube import YouTube
+from moviepy.editor import AudioFileClip
+from pathlib import Path
 
-save_path = 'Downloads/' # Path to save the downloaded MP3 files
+def setup_logging():
+    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
-def download_video_as_mp3(url):
-    """
-    Download a YouTube video and save it as an MP3 file, removing spaces from the file name.
-    """
-    try:
-        # Ensure save_path exists
-        if not os.path.exists(save_path):
-            os.makedirs(save_path)
+def ensure_directory_exists(path):
+    Path(path).mkdir(parents=True, exist_ok=True)
 
-        # Download video
-        yt = YouTube(url)
-        video = yt.streams.filter(only_audio=True).first()
-        out_file = video.download(output_path=save_path)
+def download_video(url, output_path):
+    yt = YouTube(url)
+    video = yt.streams.filter(only_audio=True).first()
+    return video.download(output_path=output_path)
 
-        # Convert to MP3 with no spaces in the filename
-        base, ext = os.path.splitext(out_file)
-        base = base.replace(' ', '')  # Remove spaces from the base filename
-        new_file = base + '.mp3'
-        clip = AudioFileClip(out_file)
-        clip.write_audiofile(new_file)
+def convert_video_to_mp3(input_file):
+    input_file = str(input_file)
+    base = Path(input_file).stem.replace(' ', '')
+    new_file = Path(input_file).parent / f'{base}.mp3'
+    clip = AudioFileClip(input_file)
+    clip.write_audiofile(new_file.as_posix())
+    return new_file
 
-        # Remove the original download
-        os.remove(out_file)
+def clean_up_file(file_path):
+    os.remove(file_path)
 
-        # Final MP3 filename
-        final_file = os.path.basename(new_file)
+def process_video_download(url, save_path):
+    out_file = download_video(url, save_path)
+    new_file = convert_video_to_mp3(Path(out_file))
+    clean_up_file(out_file)
+    return new_file.name
 
-        print(f"Downloaded and converted to MP3: {final_file}")
-        return final_file
-    except Exception as e:
-        print(f"An error occurred with {url}: {e}")
-        return None
-
-def download_multiple_videos_as_mp3(urls_string, delimiter=';'):
-    """
-    Download multiple YouTube videos and save them as MP3 files. Generate a text file 
-    listing all downloaded MP3 files.
-    """
+def download_multiple_videos_as_mp3(urls_string, save_path, delimiter=';'):
+    ensure_directory_exists(save_path)
     urls = urls_string.split(delimiter)
-    downloaded_files = []
-
-    for url in urls:
-        url = url.strip()  # Remove any leading/trailing whitespace
-        filename = download_video_as_mp3(url)
-        if filename:
-            downloaded_files.append(filename)
-
-    # Generate text file with MP3 filenames
-    text_file = os.path.join(save_path, 'downloaded_mp3_files.txt')
+    downloaded_files = [process_video_download(url.strip(), save_path) for url in urls if url.strip()]
+    text_file = save_path / 'downloaded_mp3_files.txt'
     with open(text_file, 'w') as f:
         f.write("mp3_files = [\n")
-        # Handle the comma placement for the last item
-        for i, filename in enumerate(downloaded_files):
-            if i < len(downloaded_files) - 1:
-                f.write(f"             '{filename}',\n")
-            else:
-                f.write(f"             '{filename}'\n")
+        f.writelines([f"             '{filename}',\n" for filename in downloaded_files[:-1]])
+        f.write(f"             '{downloaded_files[-1]}'\n")
         f.write("]\n")
+    logging.info("The list of downloaded MP3 files has been generated.")
 
-    print("The list of downloaded MP3 files has been generated.")
+def main():
+    save_path = Path('Downloads')
+    urls_string = input("Enter the YouTube video URLs separated by a semicolon (;): ")
+    download_multiple_videos_as_mp3(urls_string, save_path)
 
 if __name__ == "__main__":
-    urls_string = input("Enter the YouTube video URLs separated by a semicolon (;): ")
-    download_multiple_videos_as_mp3(urls_string)
+    setup_logging()
+    main()
