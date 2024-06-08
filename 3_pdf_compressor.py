@@ -1,8 +1,9 @@
 import subprocess
 import logging
+import argparse
 from pathlib import Path
 
-DEFAULT_QUALITY = "-dPDFSETTINGS=/screen"  # Lower quality and smaller size
+DEFAULT_QUALITY = "-dPDFSETTINGS=/screen"
 BYTES_IN_KB = 1024
 
 
@@ -27,7 +28,7 @@ def compress_pdf(input_path, output_path):
 def process_pdf_compression(file_path, save_path):
     file_path = Path(file_path)  # Ensure file_path is a Path object
     ensure_directory_exists(save_path)
-    output_file = Path(save_path) / f"{Path(file_path).stem}_compressed.pdf"
+    output_file = Path(save_path) / f"{file_path.stem}_compressed.pdf"
 
     # Use .stat() method to get the file size in kilobytes
     original_size = file_path.stat().st_size / BYTES_IN_KB
@@ -38,7 +39,7 @@ def process_pdf_compression(file_path, save_path):
         new_size = output_file.stat().st_size / BYTES_IN_KB  # Size in kilobytes
         logging.info(f"Original size: {original_size:.2f} KB")
         logging.info(f"New size: {new_size:.2f} KB")
-        logging.info(f"Compression ratio: {new_size / original_size * 100:.2f}%")
+        logging.info(f"Compression rate: {((new_size/original_size)-1) * 100:.2f}%")
         return output_file.name
     return None
 
@@ -61,8 +62,20 @@ def process_input_path(input_path, save_path):
 
 
 def main():
-    input_path = input("Enter the directory or PDF file path: ")
-    save_path = Path.home() / "Downloads"
+    parser = argparse.ArgumentParser(description="Compress PDF files.")
+    parser.add_argument(
+        "input_path", type=str, help="The directory or PDF file path to compress."
+    )
+    parser.add_argument(
+        "--save_path",
+        type=str,
+        default=str(Path.home() / "Downloads"),
+        help="Path to save the compressed PDF files. Default is ~/Downloads",
+    )
+    args = parser.parse_args()
+
+    input_path = args.input_path
+    save_path = Path(args.save_path)
     ensure_directory_exists(save_path)
     process_input_path(input_path, save_path)
 
