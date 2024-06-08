@@ -64,9 +64,7 @@ def download_multiple_videos_as_mp3(urls, save_path):
     text_file = save_path / "downloaded_mp3_files.txt"
     with open(text_file, "w") as f:
         f.write("mp3_files = [\n")
-        f.writelines(
-            [f"    '{filename}',\n" for filename in downloaded_files[:-1]]
-        )
+        f.writelines([f"    '{filename}',\n" for filename in downloaded_files[:-1]])
         if downloaded_files:
             f.write(f"    '{downloaded_files[-1]}'\n")
         f.write("]\n")
@@ -74,26 +72,28 @@ def download_multiple_videos_as_mp3(urls, save_path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Download YouTube videos as MP3 files.")
-    parser.add_argument(
-        'urls',
-        type=str,
-        nargs='+',
-        help='YouTube video URLs separated by spaces or semicolons.'
+    parser = argparse.ArgumentParser(
+        description="Download YouTube videos as MP3 files."
     )
     parser.add_argument(
-        '--save_path',
+        "urls",
         type=str,
-        default='Downloads',
-        help='Path to save the downloaded MP3 files.'
+        nargs="+",
+        help="YouTube video URLs separated by spaces or semicolons.",
+    )
+    parser.add_argument(
+        "--save_path",
+        type=str,
+        default="Downloads",
+        help="Path to save the downloaded MP3 files.",
     )
     args = parser.parse_args()
 
     # Split the URLs by semicolons
     all_urls = []
     for url in args.urls:
-        all_urls.extend(url.split(';'))
-    
+        all_urls.extend(url.split(";"))
+
     save_path = Path(args.save_path)
     download_multiple_videos_as_mp3(all_urls, save_path)
 
