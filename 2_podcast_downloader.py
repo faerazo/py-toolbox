@@ -6,6 +6,7 @@ Works with:
 """
 
 import logging
+import argparse
 from pathlib import Path
 import requests
 from xml.etree import ElementTree
@@ -50,37 +51,62 @@ def generate_downloads_list(filenames, download_dir):
     logging.info("Download list generated.")
 
 
-def main():
-    download_dir = Path.home() / "Downloads"
-    ensure_directory_exists(download_dir)
-
-    rss_feed_url = input("Please enter the RSS feed URL: ")
-    rss_root = fetch_rss_feed(rss_feed_url)
-
-    episodes = rss_root.findall("./channel/item")
+def display_episodes(episodes):
     logging.info("Available episodes:")
     for i, episode in enumerate(episodes[::-1], start=1):
         title = episode.find("title").text
         logging.info(f"Episode {i}: {title}")
 
+
+def get_selected_episodes(episodes):
     selected_episode_numbers = input(
-        "\nEnter the the episode numbers you want to download, separated by a semicolon(;):\n"
+        "\nEnter the episode numbers you want to download, separated by a semicolon(;):\n"
     )
     selected_numbers = [int(num.strip()) for num in selected_episode_numbers.split(";")]
 
-    filtered_episodes = [
+    return [
         episodes[len(episodes) - num]
         for num in selected_numbers
         if len(episodes) - num in range(len(episodes))
     ]
+
+
+def download_selected_episodes(episodes, download_dir):
     downloaded_filenames = [
         download_episode(
             ep.find("enclosure").attrib["url"], ep.find("title").text, download_dir
         )
-        for ep in filtered_episodes
+        for ep in episodes
     ]
-
     generate_downloads_list(downloaded_filenames, download_dir)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Download podcast episodes from an RSS feed."
+    )
+    parser.add_argument(
+        "rss_feed_url", type=str, help="The RSS feed URL of the podcast."
+    )
+    parser.add_argument(
+        "--save_path",
+        type=str,
+        default=str(Path.home() / "Downloads"),
+        help="Path to save the downloaded podcast files.",
+    )
+    args = parser.parse_args()
+
+    download_dir = Path(args.save_path)
+    ensure_directory_exists(download_dir)
+
+    rss_feed_url = args.rss_feed_url
+    rss_root = fetch_rss_feed(rss_feed_url)
+
+    episodes = rss_root.findall("./channel/item")
+    display_episodes(episodes)
+
+    selected_episodes = get_selected_episodes(episodes)
+    download_selected_episodes(selected_episodes, download_dir)
 
 
 if __name__ == "__main__":
