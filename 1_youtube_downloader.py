@@ -1,9 +1,11 @@
 import os
 import logging
 import argparse
-from pytube import YouTube
+#from pytube import YouTube
+from pytubefix import YouTube
 from moviepy.editor import AudioFileClip
 from pathlib import Path
+from os.path import expanduser
 
 
 def setup_logging():
@@ -84,7 +86,7 @@ def main():
     parser.add_argument(
         "--save_path",
         type=str,
-        default="Downloads",
+        default=os.path.join(expanduser("~"), "Downloads"),
         help="Path to save the downloaded MP3 files.",
     )
     args = parser.parse_args()
