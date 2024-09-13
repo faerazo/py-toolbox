@@ -10,6 +10,8 @@ import argparse
 from pathlib import Path
 import requests
 from xml.etree import ElementTree
+import concurrent.futures
+import re
 
 
 def setup_logging():
@@ -26,18 +28,20 @@ def fetch_rss_feed(url):
 
 
 def download_episode(episode_url, episode_title, download_dir):
-    safe_title = (
-        "".join(
-            c
-            for c in episode_title.replace(" ", "_").replace(":", "")
-            if c.isalnum() or c in ["_", "."]
-        )
-        + ".mp3"
-    )
+    safe_title = re.sub(r'[^\w\-_\. ]', '', episode_title.replace(" ", "_")) + ".mp3"
     full_path = download_dir / safe_title
-    response = requests.get(episode_url)
+    
+    if full_path.exists():
+        logging.info(f"Skipped (already exists): {safe_title}")
+        return safe_title
+
+    response = requests.get(episode_url, stream=True)
+    response.raise_for_status()
+    
     with open(full_path, "wb") as file:
-        file.write(response.content)
+        for chunk in response.iter_content(chunk_size=8192):
+            file.write(chunk)
+    
     logging.info(f"Downloaded: {safe_title}")
     return safe_title
 
@@ -72,12 +76,16 @@ def get_selected_episodes(episodes):
 
 
 def download_selected_episodes(episodes, download_dir):
-    downloaded_filenames = [
-        download_episode(
-            ep.find("enclosure").attrib["url"], ep.find("title").text, download_dir
-        )
-        for ep in episodes
-    ]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_episode = {executor.submit(download_episode, ep.find("enclosure").attrib["url"], ep.find("title").text, download_dir): ep for ep in episodes}
+        downloaded_filenames = []
+        for future in concurrent.futures.as_completed(future_to_episode):
+            try:
+                filename = future.result()
+                downloaded_filenames.append(filename)
+            except Exception as exc:
+                logging.error(f"An episode download generated an exception: {exc}")
+    
     generate_downloads_list(downloaded_filenames, download_dir)
 
 
