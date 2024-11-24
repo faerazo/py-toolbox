@@ -131,7 +131,7 @@ def main():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default=str(Path.home() / "Downloads" / "ai_texts"),
+        default=str(Path.home() / "Downloads"),
         help="Directory to save the output text files"
     )
     
