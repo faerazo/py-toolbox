@@ -5,6 +5,8 @@ from urllib.parse import urlparse, parse_qs
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 import subprocess
 import pyperclip
+import pyautogui
+import time
 
 def setup_logging():
     logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -57,11 +59,11 @@ def save_transcript_to_file(video_id, transcript_data, save_path):
     prompt = "Summarize the following video, provide me the key points and relevant details.\n\n" + full_transcript
     try:
         pyperclip.copy(prompt)
-        logging.info("Prompt copied to clipboard! You can now paste it into ChatGPT.")
+        logging.info("Prompt copied to clipboard!")
     except Exception as e:
         logging.error(f"Failed to copy to clipboard: {e}")
     
-    # Open ChatGPT using the appropriate command based on the platform
+    # Open ChatGPT and automatically paste
     try:
         import platform
         system = platform.system().lower()
@@ -72,12 +74,25 @@ def save_transcript_to_file(video_id, transcript_data, save_path):
             try:
                 subprocess.run(['wslview', 'https://chat.openai.com/'], check=True)
             except (subprocess.CalledProcessError, FileNotFoundError):
-                # Fallback to xdg-open if wslview is not available
                 subprocess.run(['xdg-open', 'https://chat.openai.com/'], check=True)
         elif system == 'windows':  # Windows
             subprocess.run(['start', 'https://chat.openai.com/'], shell=True, check=True)
+        
+        # Wait for the browser to open and load
+        time.sleep(2)
+        
+        # Paste the content (Ctrl+V or Command+V)
+        if system == 'darwin':
+            pyautogui.keyDown('command')
+            pyautogui.press('v')
+            pyautogui.keyUp('command')
+        else:
+            pyautogui.keyDown('ctrl')
+            pyautogui.press('v')
+            pyautogui.keyUp('ctrl')
+            
     except Exception as e:
-        logging.error(f"Failed to open browser: {e}")
+        logging.error(f"Failed to open browser or paste content: {e}")
     
     return transcript_file.name
 
