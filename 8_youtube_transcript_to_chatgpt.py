@@ -61,13 +61,23 @@ def save_transcript_to_file(video_id, transcript_data, save_path):
     except Exception as e:
         logging.error(f"Failed to copy to clipboard: {e}")
     
-    # Open ChatGPT
+    # Open ChatGPT using the appropriate command based on the platform
     try:
-        subprocess.run(['wslview', 'https://chat.openai.com/'], check=True)
-    except subprocess.CalledProcessError:
-        logging.error("Failed to open browser. Make sure 'wslu' package is installed (sudo apt install wslu)")
-    except FileNotFoundError:
-        logging.error("'wslview' command not found. Install it with: sudo apt install wslu")
+        import platform
+        system = platform.system().lower()
+        
+        if system == 'darwin':  # macOS
+            subprocess.run(['open', 'https://chat.openai.com/'], check=True)
+        elif system == 'linux':  # Linux/WSL
+            try:
+                subprocess.run(['wslview', 'https://chat.openai.com/'], check=True)
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                # Fallback to xdg-open if wslview is not available
+                subprocess.run(['xdg-open', 'https://chat.openai.com/'], check=True)
+        elif system == 'windows':  # Windows
+            subprocess.run(['start', 'https://chat.openai.com/'], shell=True, check=True)
+    except Exception as e:
+        logging.error(f"Failed to open browser: {e}")
     
     return transcript_file.name
 
