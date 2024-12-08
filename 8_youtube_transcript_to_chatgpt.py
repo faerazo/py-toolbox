@@ -5,8 +5,13 @@ from urllib.parse import urlparse, parse_qs
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 import subprocess
 import pyperclip
-import pyautogui
+import platform
 import time
+
+# Conditionally import pyautogui
+system = platform.system().lower()
+if system != 'linux':
+    import pyautogui
 
 def setup_logging():
     logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -71,25 +76,25 @@ def save_transcript_to_file(video_id, transcript_data, save_path):
         if system == 'darwin':  # macOS
             subprocess.run(['open', 'https://chat.openai.com/'], check=True)
         elif system == 'linux':  # Linux/WSL
-            try:
-                subprocess.run(['wslview', 'https://chat.openai.com/'], check=True)
-            except (subprocess.CalledProcessError, FileNotFoundError):
-                subprocess.run(['xdg-open', 'https://chat.openai.com/'], check=True)
+            subprocess.run(['wslview', 'https://chat.openai.com/'], check=True)
+            logging.info("Please paste the content manually in ChatGPT (clipboard has been copied)")
+            return transcript_file.name
         elif system == 'windows':  # Windows
             subprocess.run(['start', 'https://chat.openai.com/'], shell=True, check=True)
         
         # Wait for the browser to open and load
         time.sleep(2)
         
-        # Paste the content (Ctrl+V or Command+V)
-        if system == 'darwin':
-            pyautogui.keyDown('command')
-            pyautogui.press('v')
-            pyautogui.keyUp('command')
-        else:
-            pyautogui.keyDown('ctrl')
-            pyautogui.press('v')
-            pyautogui.keyUp('ctrl')
+        # Only attempt to paste if not on Linux/WSL
+        if system != 'linux':
+            if system == 'darwin':
+                pyautogui.keyDown('command')
+                pyautogui.press('v')
+                pyautogui.keyUp('command')
+            elif system == 'windows':
+                pyautogui.keyDown('ctrl')
+                pyautogui.press('v')
+                pyautogui.keyUp('ctrl')
             
     except Exception as e:
         logging.error(f"Failed to open browser or paste content: {e}")
